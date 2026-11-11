@@ -1,11 +1,11 @@
-"""Descriptive FRED-style CSV parsing (not release-date-safe predictive features)."""
+"""Load and plot economic series by their observation periods."""
 from __future__ import annotations
 from pathlib import Path
 import pandas as pd
 
 
 def read_fred_observations(path: str | Path) -> pd.Series:
-    """Load historical observation PERIOD labels; not actual availability dates."""
+    """Read a single FRED-style series indexed by its observation date."""
     frame = pd.read_csv(path)
     date_name = next((x for x in ("DATE", "Date", "date") if x in frame.columns), None)
     if date_name is None:
@@ -19,7 +19,7 @@ def read_fred_observations(path: str | Path) -> pd.Series:
 
 
 def observation_period_overlay(prices: pd.DataFrame, series: pd.Series) -> pd.DataFrame:
-    """Monthly descriptive display only; NOT a feature available for trading."""
+    """Align monthly series for plotting, without assuming release-date availability."""
     monthly_close = prices["Close"].resample("MS").last().rename("SP500_Close_MonthEnd")
     macro = series.resample("MS").ffill().rename(series.name or "Economic_Series")
     return pd.concat((monthly_close, macro), axis=1).dropna()

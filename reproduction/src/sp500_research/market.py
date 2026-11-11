@@ -1,7 +1,4 @@
-"""Market-data loading. User supplies a licensed, unmodified OHLCV CSV or downloads it.
-
-Index OHLCV data is for research, not necessarily a directly tradable product.
-"""
+"""Load daily OHLCV data from a CSV or a fresh Yahoo Finance request."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -12,13 +9,12 @@ REQUIRED = ("Open", "High", "Low", "Close")
 
 
 def clean_ohlcv(data: pd.DataFrame) -> pd.DataFrame:
-    """Normalize a daily market frame to UTC-naive, strictly increasing dates.
+    """Clean the date index and price columns.
 
-    A missing Volume is represented as NaN, not zero: 0 would masquerade as
-    genuine volume and make OBV silently meaningless.
+    Keep missing volume as NaN so it cannot be mistaken for actual zero volume.
     """
     frame = data.copy()
-    # yfinance sometimes returns a 2-level header such as ('Close', '^GSPC').
+    # Yahoo Finance sometimes returns a second column level for the ticker.
     if isinstance(frame.columns, pd.MultiIndex):
         available = frame.columns.get_level_values(0)
         if all(col in available for col in REQUIRED):
@@ -52,7 +48,7 @@ def clean_ohlcv(data: pd.DataFrame) -> pd.DataFrame:
 
 
 def load_prices(csv_path: str | Path) -> pd.DataFrame:
-    """Read a user-supplied historical OHLCV CSV with a Date column."""
+    """Read an OHLCV CSV and use its date column as the index."""
     data = pd.read_csv(csv_path)
     date_key = next((c for c in ("Date", "Datetime", "date") if c in data.columns), None)
     if date_key is None:
@@ -61,7 +57,7 @@ def load_prices(csv_path: str | Path) -> pd.DataFrame:
 
 
 def download_sp500(start="2000-01-01", end="2025-01-01") -> pd.DataFrame:
-    """Explicit opt-in fresh download. No access or point-in-time guarantees."""
+    """Fetch the requested period of ^GSPC prices from Yahoo Finance."""
     try:
         import yfinance as yf
     except ImportError as exc:

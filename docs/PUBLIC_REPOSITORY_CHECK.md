@@ -1,50 +1,38 @@
-# Public repository and implementation review — November 11, 2026
+# Repository review
 
-## Remote GitHub snapshot (checked using the linked GitHub repository API)
+*Checked November 11, 2026 against the public `main` branch of [sp500-financial-ml-research](https://github.com/jingxiangong/sp500-financial-ml-research).*
 
-Repository: `https://github.com/jingxiangong/sp500-financial-ml-research`
+## What is in the repository
 
-- GitHub reported visibility: **public**.
-- Git tree on `main` contained only `.gitignore`, `README.md`, `source_sha256.txt` at the time of this check.
-- The old README described `archive/`, `docs/`, `figures/`, `paper/`, `scripts/` as though already present, but those directories were **not** in the remote Git tree.
-- The old README claimed the material was "prepared for review, not yet approved for a public push", contradictory with visibility already public.
-- The original `source_sha256.txt` referred to code/data not present in that remote. It should be replaced with the new implementation's file hashes or removed.
-- The connected GitHub account has read access but **not push permissions** to this repository, so no files have been uploaded or changed remotely by this review.
+The directory structure has been checked following the upload cleanup in commit [`f2dba32`](https://github.com/jingxiangong/sp500-financial-ml-research/commit/f2dba323d6d7c484837a38b9b7ab48d34ca6c293).
 
-## What this release changes
+The root contains `README.md`, `.gitignore`, `source_sha256.txt`, and three directories: `docs/`, `paper/`, and `reproduction/`. The five notebooks are under `reproduction/notebooks/`. The Python package, tests, and installation files are under `reproduction/`. There are **22 tracked files** in the reviewed snapshot.
 
-- Fully independent, new 2026 notebooks covering data preparation, classical
-  models, optional LSTM, feature inspection/ARIMA and descriptive macro/strategy
-  exploration. **No original collaborative notebooks are included.**
-- Current-market-data acquisition is opt-in. No market snapshot is redistributed.
-- Features and next-day labels have explicit time semantics; splits use target
-  dates; scaling and importance modeling are trained on the training period.
-- Uses a naive last-close persistence benchmark, which matters when comparing
-  index-level price errors.
-- Macroeconomic values are not incorporated into forecasting without observed
-  release dates and vintages; descriptive graphs are clearly labeled.
-- Results do not represent reproduced 2025 IEEE BigData experimental outcomes.
+The earlier upload had several files in the wrong locations. Those duplicates have since been removed; the root layout above is the one to use.
 
-## Tests and open items
+## Checks completed
 
-- The new Python core is tested with deterministic synthetic OHLCV data.
-- All new Jupyter files were generated as valid `.ipynb` documents and checked
-  for Python syntax; new notebooks are intentionally saved **without outputs**.
-- Any model execution on real historical market data remains unverified because
-  no licensed OHLCV CSV or available market-data network feed was used for it.
-- TensorFlow LSTM and optional ARIMA/XGBoost full notebook runs are not part of
-  the core unit tests; library availability, version pinning and run logs remain
-  follow-up work.
-- This code is research-oriented and not financial advice, a live signal service
-  or reliable trading strategy.
+| Check | Result |
+|---|---|
+| Repository structure and file paths | Confirmed on GitHub `main` |
+| All five notebook files present | Confirmed |
+| Notebook JSON and Python cell syntax | Checked on the prepared source package |
+| Python module syntax | Checked on the prepared source package |
+| Offline unit tests | 5 passed using synthetic OHLCV data |
+| File-integrity manifest | Included as `source_sha256.txt`; regenerate it if files change |
 
-## Before making the README your portfolio evidence link
+The offline tests cover the next-session target, lag construction, chronological partitioning, a basic model run, and moving-average strategy behavior. They do **not** establish performance on real market data.
 
-1. Replace the old root README with the new one and upload **all** directories.
-2. Replace the old `source_sha256.txt` or delete it; do not leave original
-   unpublished-file checksums as if those files were present.
-3. Open every notebook on GitHub and check that it renders.
-4. Verify no original collaborative notebook or publisher PDF is included.
-5. Run `pytest` locally and disclose unexecuted examples as such.
-6. Keep the 2024 research authors and paper citation visible.
-7. Do not write "paper results reproduced" without a matching clean execution.
+## What has not been verified
+
+- A clean end-to-end run of all five notebooks using a fixed, licensed historical market dataset.
+- TensorFlow LSTM training and the optional XGBoost and ARIMA examples in a fully pinned environment.
+- Agreement with the 2025 IEEE publication's numerical results. The new code uses a different setup and does not claim to reproduce those results.
+- Historical availability dates and revisions for GDP, CPI, and unemployment data. Those series are descriptive in this repository, not predictors.
+- Market execution costs, financing, and other details needed for a realistic trading-system evaluation.
+
+The repository includes no original collaborative `RoughCode` notebooks, no publisher PDF, and no third-party price-data snapshot. The 2026 reference implementation is separate from the original research. The paper's authorship is recorded in the README and citation file.
+
+## Before using this as a demonstration
+
+Open the five notebooks on GitHub to check that they render. For a working demonstration, install the project from `reproduction/`, run the tests, and record the market-data source and run date before quoting any new results. The research notebooks are not a deployed forecasting or trading product.

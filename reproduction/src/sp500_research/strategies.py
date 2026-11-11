@@ -1,4 +1,4 @@
-"""Illustrative historical trading-signal examples; never evidence of ML strategy profit."""
+"""Simple moving-average examples for exploring historical signals."""
 from __future__ import annotations
 import pandas as pd
 import numpy as np
@@ -6,10 +6,9 @@ import numpy as np
 
 def illustrative_sma_strategy(close: pd.Series, short=50, long=200,
                               cost_per_turnover=0.001) -> pd.DataFrame:
-    """Signal known after close t, position used from t+1 (one-bar delay).
+    """Apply a moving-average signal on the following trading session.
 
-    Simplifies execution, ignores borrow fees and index instrument tracking,
-    and is not a production backtest.
+    Includes a simple turnover cost, but omits financing and execution details.
     """
     if short >= long or short < 2:
         raise ValueError("Must have 2 <= short < long")

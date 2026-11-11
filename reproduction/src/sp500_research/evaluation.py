@@ -1,8 +1,4 @@
-"""Chronological, leakage-controlled benchmark utilities.
-
-No paper reproduction claim. Results depend on dataset, provider vintage, period,
-feature timing, and evaluation protocol.
-"""
+"""Chronological splitting, model comparisons, and regression metrics."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -25,7 +21,7 @@ class ChronoSplit:
 
 def chronological_split(frame: pd.DataFrame, train_fraction: float = 0.70,
                         valid_fraction: float = 0.15) -> ChronoSplit:
-    """Split by target dates, never with a randomized train/test split."""
+    """Split the labeled observations in time order by their target dates."""
     if not 0.5 <= train_fraction <= 0.9:
         raise ValueError("train_fraction outside accepted range")
     if not 0.05 <= valid_fraction <= 0.3 or train_fraction + valid_fraction >= 0.95:
@@ -55,7 +51,7 @@ def regression_metrics(actual, predicted) -> dict[str, float]:
 
 
 def candidate_models(include_xgboost: bool = False) -> dict:
-    # Fixed example parameters, not a tuned search or published recipe.
+    # Keep the example settings fixed; no hyperparameter search is done here.
     models = {
         "Ridge": make_pipeline(StandardScaler(), Ridge(alpha=10)),
         "Random Forest": RandomForestRegressor(n_estimators=100, min_samples_leaf=4,
@@ -76,17 +72,17 @@ def candidate_models(include_xgboost: bool = False) -> dict:
 
 
 def train_and_compare(parts: ChronoSplit, include_xgboost: bool = False):
-    """Fit on train, rank on validation, evaluate test once (without refit).
+    """Fit candidate models on training data and select by validation RMSE.
 
-    All scores are in original price units, unlike potentially scaled paper
-    results. Do NOT interpret them as independently reproduced paper tables.
+    The table reports all candidates on validation and test sets in index points.
+    Do not use the test scores to choose or retune the model.
     """
     cols = model_features(parts.train)
     xtr, ytr = parts.train[cols], parts.train["target_next_close"]
     xv, yv = parts.valid[cols], parts.valid["target_next_close"]
     xt, yt = parts.test[cols], parts.test["target_next_close"]
     results = []
-    # Strong price-level baseline; knows the market close at feature date t.
+    # Use the last known close as a simple point of comparison.
     for stage, d in (("valid", parts.valid), ("test", parts.test)):
         score = regression_metrics(d["target_next_close"], d["close_t"])
         results.append({"model": "Naive last close", "split": stage, **score})

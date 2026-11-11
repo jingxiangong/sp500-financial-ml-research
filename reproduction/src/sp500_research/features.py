@@ -1,8 +1,4 @@
-"""Causal (past/present-only) features for predicting the next observed close.
-
-Forecast timing: after close on trading date t, predict close on trading date t+1.
-This is NOT a pre-market forecast and makes no investment claims.
-"""
+"""Technical indicators built from data available by the end of each session."""
 from __future__ import annotations
 
 import numpy as np
@@ -25,11 +21,9 @@ def _rsi(close: pd.Series, n: int = 14) -> pd.Series:
 
 
 def build_supervised_frame(ohlcv: pd.DataFrame) -> pd.DataFrame:
-    """Build an aligned t -> t+1 next-close dataset.
+    """Prepare next-session close targets alongside current and past indicators.
 
-    `target_date` is a real future trading date, *not* a feature. Split on
-    target_date to ensure no training label crosses into validation/test.
-    Features use data through market close at t only.
+    The target date is kept for chronological splitting but not used as a feature.
     """
     p = clean_ohlcv(ohlcv)
     c = p["Close"]
@@ -65,6 +59,6 @@ def build_supervised_frame(ohlcv: pd.DataFrame) -> pd.DataFrame:
 
 
 def model_features(frame: pd.DataFrame) -> list[str]:
-    """Exclude target/date identifiers and any nonexistent volume feature."""
+    """Return the available predictor columns, excluding labels and dates."""
     exclude = {"target_next_close", "target_date"}
     return [c for c in frame.columns if c not in exclude]

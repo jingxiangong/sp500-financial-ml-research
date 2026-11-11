@@ -1,88 +1,67 @@
-# S&P 500 Forecasting — Independent Research Reimplementation
+# S&P 500 Forecasting: Research Notes and Reimplementation
 
-**2026 reference implementation · Python/Jupyter · Historical research attribution preserved**
+In 2024, I worked with Abhinav Jain on a University of Manitoba research project exploring S&P 500 prices, technical indicators, and economic data such as GDP, CPI, and unemployment. The work later contributed to a paper published at IEEE BigData 2025.
 
-This repository documents and independently reimplements selected methods from an academic study of S&P 500 forecasting with technical and macroeconomic indicators. The original coursework took place in 2024 and led to a five-author paper at IEEE BigData 2025. **The code in `reproduction/` is newly written educational reference code, not the source code that produced the published figures or results.**
+This repository is a **2026 follow-up implementation** of some of those research ideas. It revisits the analysis in Python with a clearly defined forecast target, chronological evaluation, and a simple baseline. It is not the original code used to produce the published results.
 
-## Research question
+## The question
 
-Do technical indicators and macroeconomic information offer useful signals for forecasting S&P 500 prices? How do different model classes compare against a simple persistence baseline when evaluated chronologically?
+Can technical indicators help predict the next S&P 500 closing value? And how much do more complicated models add over simply using the last known close?
 
-The 2024 work explored historical price/volume, moving averages, MACD, RSI, ATR and OBV; GDP, CPI and unemployment were studied for additional economic context. The early two-author manuscript's discussion reported **no substantial additional gain from GDP** for its selected-feature comparison. That finding does not establish causality or a universal result.
+The original project also explored whether macroeconomic indicators provide information beyond market-derived features. An important finding in the early research manuscript was that adding GDP to a selected set of technical features did **not** produce a clear additional improvement in that comparison. That result is worth keeping alongside the more promising model experiments.
 
-## 2026 implementation: what is included
+## What's here
 
-```text
-reproduction/
-  notebooks/
-    01_data_and_features.ipynb
-    02_classical_models.ipynb
-    03_lstm_sequences.ipynb
-    04_feature_selection_and_arima.ipynb
-    05_exploratory_macro_and_strategies.ipynb
-  src/sp500_research/
-    market.py, features.py, evaluation.py, macro.py, strategies.py
-  tests/test_market_features.py
-  data/README.md
-  pyproject.toml, requirements.txt
-paper/citation.bib
-docs/PUBLIC_REPOSITORY_CHECK.md
-source_sha256.txt
-```
+| Notebook | Focus |
+|---|---|
+| [01 · Data and features](reproduction/notebooks/01_data_and_features.ipynb) | Prepare daily market data, calculate indicators, and define a next-session target |
+| [02 · Model comparison](reproduction/notebooks/02_classical_models.ipynb) | Compare a last-close baseline with Ridge, Random Forest, and gradient boosting; XGBoost is optional |
+| [03 · LSTM](reproduction/notebooks/03_lstm_sequences.ipynb) | Build 30-session sequences and train an optional TensorFlow model |
+| [04 · Feature selection and ARIMA](reproduction/notebooks/04_feature_selection_and_arima.ipynb) | Inspect permutation importance on validation data and try an ARIMA example |
+| [05 · Macroeconomics and strategies](reproduction/notebooks/05_exploratory_macro_and_strategies.ipynb) | Compare economic series descriptively and examine a simple moving-average rule |
 
-Five notebooks have been **independently implemented** as a readable teaching/research workflow. They do not contain the collaborative `RoughCode1.ipynb`–`RoughCode4.ipynb` or `roughCode5.ipynb` from 2024, and are **not** edits or aliases of those files. The original `coding.ipynb` (personally authored in the earlier project) is not included in this reimplementation package. No original copyrighted PDF or third-party market-data CSV is bundled.
+The reusable data-processing and evaluation functions live in [`reproduction/src/sp500_research/`](reproduction/src/sp500_research/). The accompanying [tests](reproduction/tests/) use synthetic price data. You'll also find a [short repository review](docs/PUBLIC_REPOSITORY_CHECK.md), [project history and attribution](docs/CHANGELOG_AND_ATTRIBUTION.md), and the [paper citation](paper/citation.bib).
 
-### What the independent notebooks do
+## Running the notebooks
 
-| Notebook | Main purpose | Important constraint |
-|---|---|---|
-| 01 | OHLCV normalization, past-only indicators and next-session label | Features at close *t* → label at close *t+1* |
-| 02 | Naive last-close baseline, Ridge, Random Forest and gradient boosting; optional XGBoost | Split by **target date**, rank on validation |
-| 03 | Optional TensorFlow LSTM over lookback sequences | Train-only scaling; new metrics, not IEEE results |
-| 04 | Validation-only permutation importance; optional ARIMA one-step walk-forward | No feature-selection tuning on test |
-| 05 | Descriptive GDP/CPI/UNRATE overlays and SMA illustration | Observation dates are **not release dates**; no ML trading claims |
-
-## Local setup
-
-Requires Python 3.10+; tested locally with preinstalled Python tooling on synthetic data. Network-dependent data acquisition, TensorFlow LSTM training and paper-result reproduction **were not tested** in this code review.
+Use Python 3.10 or newer. From the repository root:
 
 ```bash
 cd reproduction
 python -m venv .venv
-# Activate the virtual environment on your operating system.
+# Activate .venv using the command for your operating system.
 python -m pip install -e .
 python -m pip install jupyterlab pytest yfinance
 python -m pytest -q
 jupyter lab notebooks
 ```
 
-Optional libraries: `pip install xgboost statsmodels tensorflow`. These are not required for the core unit tests; some individual notebooks require them. Installing dependencies does not guarantee that model services and data feeds are always available.
+The first notebook looks for `reproduction/data/sp500_ohlcv.csv`. If the file is missing, the notebooks try to download a historical sample of `^GSPC` using `yfinance`; that path requires an internet connection. You can supply your own CSV instead. See the [data notes](reproduction/data/README.md) for the expected columns and data-use considerations.
 
-**Input data:** Put your own appropriately licensed `sp500_ohlcv.csv` in `reproduction/data/` with a `Date,Open,High,Low,Close,Volume` schema, or let the notebooks explicitly fetch a new Yahoo Finance sample with `yfinance`. New downloads use different historical data vintages from the original experiments. See [`reproduction/data/README.md`](reproduction/data/README.md).
+TensorFlow, `statsmodels`, and XGBoost are optional. Install the relevant package only if you want to run the corresponding example:
 
-Run notebooks from the `reproduction/notebooks/` working directory (Jupyter Lab does this when opened from the supplied path). Python modules must first be installed with `pip install -e .` from `reproduction/`.
+```bash
+python -m pip install tensorflow statsmodels xgboost
+```
 
-## Evaluation boundaries
+Run Jupyter from the `reproduction/` folder so that the notebook data paths resolve as written. The notebooks are saved without training outputs; running them will generate results for the data available in your environment.
 
-- Forecast target: next **observed trading day** close, after the current day's close is already known. This is not a market-open forecast.
-- Model inputs include current market close and past indicators, not future-shifted price columns.
-- Train/validation/test segmentation uses chronological **target dates**, so target outcomes do not cross split boundaries.
-- Scalers and feature-selection models fit on training data only; diagnostic importance is measured on validation data.
-- Errors produced by these notebooks are in **index points** and **cannot be directly compared** with MAE/RMSE values from the paper's different scaling, dataset and evaluation design.
-- Macroeconomic CSVs contain **observation-period dates**, not verified historical release dates or vintage information. They are shown descriptively and are excluded from the predictive models in this release.
-- Strategy illustrations are not market-executable profit reports or ML model backtests.
-- The LSTM and ARIMA examples are educational examples with explicit optional dependencies; they do not reproduce the 2024 experiment settings.
+## How the new experiments are evaluated
 
-See [`docs/PUBLIC_REPOSITORY_CHECK.md`](docs/PUBLIC_REPOSITORY_CHECK.md) for tests and unresolved limitations.
+The forecast is made **after market close on day t** for the closing value of the next observed trading session. Features can use prices and indicators known at the end of day t, but not information from the next session. Training, validation, and test periods are ordered by target date.
 
-## Historic research and attribution
+A last-close forecast is included throughout because predicting a price level is a problem where a simple baseline can be difficult to beat. Model selection uses validation results; the code also prints test scores for the candidate models, so the test table should be treated as a diagnostic comparison rather than a basis for further tuning. Errors are reported in index points.
 
-The research that motivated this repository was collaborative. In the earlier coursework project, Jing Xiang Ong reports primary personal ownership of `coding.ipynb` (historic market and macro preprocessing, feature exploration, data visualization), and joint work with Abhinav Jain on the separate experimental modeling notebooks. The later 2025 paper lists **Abhinav Jain, Carson K. Leung, Thanh Trung Jack Nguyen, Jing Xiang Ong and Alfredo Cuzzocrea** as coauthors. **Rewriting a method in new code does not change who contributed to the underlying research or who authored the publication.**
+Economic data need an extra precaution: a GDP or CPI observation can be dated before it was publicly released. This implementation uses those series for **descriptive plots only**, not as historical forecasting inputs. A fair macroeconomic backtest would need release dates and data vintages, not just observation dates.
 
-**Paper:** A. Jain, C. K. Leung, T. T. J. Nguyen, J. X. Ong, and A. Cuzzocrea, “Machine Learning on Big Economic Data for Predictive Financial Analytics,” *2025 IEEE International Conference on Big Data (BigData)*, pp. 4613–4622. [DOI: 10.1109/BigData66926.2025.11402545](https://doi.org/10.1109/BigData66926.2025.11402545).
+These examples have been checked on synthetic market data. They have **not** been run here as a complete reproduction of the published paper. In particular, the old research material reported an LSTM MAE of **0.1798** and RMSE of **0.1873**, but those values belong to the earlier experiments, with different data preparation and evaluation. They are not results from these notebooks.
 
-Saved historical selected-feature LSTM values (MAE **0.1798**, RMSE **0.1873**) come from the earlier research artifacts; they have **not** been independently reproduced in this repository and should never be presented as outcomes from these new notebooks.
+## Research history and contributions
 
-## Source availability and license
+- **2024 coursework:** I wrote `coding.ipynb`, which covered market and economic data preparation, exploratory features, and visual analysis. I also contributed to the modeling experiments with Abhinav Jain. Those original collaborative notebooks are not included here.
+- **2025 publication:** The resulting paper has five coauthors: Abhinav Jain, Carson K. Leung, Thanh Trung Jack Nguyen, Jing Xiang Ong, and Alfredo Cuzzocrea.
+- **2026 follow-up:** The code in `reproduction/` is a separate implementation written with coding assistance and reviewed against synthetic-data tests. It revisits the methods, rather than claiming to recover the exact publication pipeline.
 
-The original five collaborative exploratory notebooks have intentionally **not been redistributed** in this public reimplementation. Third-party market-data terms and publisher rights should be reviewed before uploading snapshots or PDFs. No LICENSE is assigned in this package; lack of a license is not a grant of unrestricted reuse. The new code was drafted using AI-assisted development for a distinct implementation and should be reviewed before public release or professional use.
+**Publication:** A. Jain, C. K. Leung, T. T. J. Nguyen, J. X. Ong, and A. Cuzzocrea, “Machine Learning on Big Economic Data for Predictive Financial Analytics,” *2025 IEEE International Conference on Big Data (BigData)*, pp. 4613–4622. [DOI: 10.1109/BigData66926.2025.11402545](https://doi.org/10.1109/BigData66926.2025.11402545).
+
+This is a research project, not an investment recommendation or trading service. No third-party market dataset or publisher PDF is distributed here, and the repository currently has no open-source license.

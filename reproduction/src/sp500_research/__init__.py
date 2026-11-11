@@ -1,7 +1,4 @@
-"""Independent educational reimplementation of historical S&P 500 research methods.
-
-Not the original code used for the 2025 IEEE BigData paper.
-"""
+"""Tools for the 2026 S&P 500 research examples."""
 
 from .market import load_prices, download_sp500
 from .features import build_supervised_frame, model_features
