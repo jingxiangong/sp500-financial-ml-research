@@ -1,0 +1,99 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "id": "7fcf7775",
+   "metadata": {},
+   "source": [
+    "# 05 — Descriptive macro comparisons and illustrative SMA strategy\n",
+    "**Independent 2026 reimplementation** of the subject matter, not a copy of collaborative 2024 notebooks. Macroeconomic CSV dates identify observation periods. This is **not** point-in-time data; macro overlays are descriptive ONLY, not forecast inputs. Any strategy curve is illustrative, uses delayed signals and simplified trading costs, and is **not** a validation of LSTM trades."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "68e0639b",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from pathlib import Path\n",
+    "from sp500_research import load_prices, download_sp500, build_supervised_frame, chronological_split\n",
+    "DATA_FILE = Path('../data/sp500_ohlcv.csv')\n",
+    "if DATA_FILE.exists():\n",
+    "    prices = load_prices(DATA_FILE)\n",
+    "else:\n",
+    "    # Explicit opt-in: new Yahoo Finance download, not the original 2024 data vintage.\n",
+    "    prices = download_sp500(start='2000-01-01', end='2025-01-01')\n",
+    "print('Data coverage:', prices.index.min().date(), 'to', prices.index.max().date(), len(prices), 'daily rows')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "70891b4d",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import matplotlib.pyplot as plt\n",
+    "from sp500_research.strategies import illustrative_sma_strategy\n",
+    "result=illustrative_sma_strategy(prices.Close, short=50, long=200,\n",
+    "                                  cost_per_turnover=0.001)\n",
+    "fig,ax=plt.subplots(figsize=(9,4))\n",
+    "ax.plot(result.index,result.buy_hold_cumulative,label='Index buy & hold, idealized')\n",
+    "ax.plot(result.index,result.sma_cumulative,label='50/200 SMA, simplified cost')\n",
+    "ax.set(title='Illustrative history; not an executable trading policy',ylabel='Growth of $1')\n",
+    "ax.legend();plt.tight_layout();plt.show()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "2943d7a8",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from pathlib import Path\n",
+    "from sp500_research.macro import read_fred_observations, observation_period_overlay\n",
+    "DATA=Path('../data')\n",
+    "for code in ('GDP','CPIAUCSL','UNRATE'):\n",
+    "    path=DATA/f'{code}.csv'\n",
+    "    if not path.exists():\n",
+    "        print('Optional observational CSV not available:',path)\n",
+    "        continue\n",
+    "    series=read_fred_observations(path)\n",
+    "    descriptive=observation_period_overlay(prices,series)\n",
+    "    print(code,'observational rows:',len(descriptive))\n",
+    "    # Standardize only for legible descriptive overlays, NOT model validation.\n",
+    "    if len(descriptive)<5:continue\n",
+    "    a=descriptive.iloc[:,0]/descriptive.iloc[:,0].iloc[0]\n",
+    "    b=descriptive.iloc[:,1]/descriptive.iloc[:,1].iloc[0]\n",
+    "    fig,ax=plt.subplots(figsize=(9,3))\n",
+    "    ax.plot(descriptive.index,a,label='S&P normalized level')\n",
+    "    ax.plot(descriptive.index,b,label=f'{code} period-labeled normalized level')\n",
+    "    ax.set(title=f'DESCRIPTIVE: {code} & market level (not release-date aligned)')\n",
+    "    ax.legend();plt.tight_layout();plt.show()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "f8afe346",
+   "metadata": {},
+   "source": [
+    "### Critical qualification\n",
+    "Do not interpret shared upward level trends as evidence of causality or predictive value. GDP observation-period date is generally earlier than the publication date at which the data became available. The archived GDP.csv represents nominal GDP (`GDP`), not `GDPC1` real GDP. The sample SMA comparison is not audited for financing, execution, slippage or market-data licensing."
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "name": "python"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}

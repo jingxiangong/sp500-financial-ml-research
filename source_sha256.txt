@@ -1,72 +1,22 @@
-"""Market-data loading. User supplies a licensed, unmodified OHLCV CSV or downloads it.
-
-Index OHLCV data is for research, not necessarily a directly tradable product.
-"""
-from __future__ import annotations
-
-from pathlib import Path
-import pandas as pd
-
-
-REQUIRED = ("Open", "High", "Low", "Close")
-
-
-def clean_ohlcv(data: pd.DataFrame) -> pd.DataFrame:
-    """Normalize a daily market frame to UTC-naive, strictly increasing dates.
-
-    A missing Volume is represented as NaN, not zero: 0 would masquerade as
-    genuine volume and make OBV silently meaningless.
-    """
-    frame = data.copy()
-    # yfinance sometimes returns a 2-level header such as ('Close', '^GSPC').
-    if isinstance(frame.columns, pd.MultiIndex):
-        available = frame.columns.get_level_values(0)
-        if all(col in available for col in REQUIRED):
-            frame.columns = frame.columns.get_level_values(0)
-            frame = frame.loc[:, ~frame.columns.duplicated()]
-        else:
-            raise ValueError("Unsupported MultiIndex OHLCV column arrangement")
-    frame = frame.rename(columns=lambda c: str(c).strip())
-    missing = set(REQUIRED).difference(frame.columns)
-    if missing:
-        raise ValueError(f"Missing daily OHLCV columns: {sorted(missing)}")
-    if not isinstance(frame.index, pd.DatetimeIndex):
-        frame.index = pd.to_datetime(frame.index, errors="coerce", utc=True)
-    else:
-        frame.index = pd.to_datetime(frame.index, errors="coerce", utc=True)
-    frame.index = frame.index.tz_convert("UTC").tz_localize(None)
-    frame = frame.loc[frame.index.notna()].sort_index()
-    frame = frame.loc[~frame.index.duplicated(keep="last")]
-    if "Volume" not in frame.columns:
-        frame["Volume"] = float("nan")
-    frame = frame.loc[:, [*REQUIRED, "Volume"]]
-    for col in frame.columns:
-        frame[col] = pd.to_numeric(frame[col], errors="coerce")
-    frame = frame.dropna(subset=list(REQUIRED))
-    if frame.empty:
-        raise ValueError("No usable market rows")
-    if (frame["Close"] <= 0).any():
-        raise ValueError("Prices must be positive")
-    frame.index.name = "Date"
-    return frame
-
-
-def load_prices(csv_path: str | Path) -> pd.DataFrame:
-    """Read a user-supplied historical OHLCV CSV with a Date column."""
-    data = pd.read_csv(csv_path)
-    date_key = next((c for c in ("Date", "Datetime", "date") if c in data.columns), None)
-    if date_key is None:
-        raise ValueError("Expected a Date column in market CSV")
-    return clean_ohlcv(data.set_index(date_key))
-
-
-def download_sp500(start="2000-01-01", end="2025-01-01") -> pd.DataFrame:
-    """Explicit opt-in fresh download. No access or point-in-time guarantees."""
-    try:
-        import yfinance as yf
-    except ImportError as exc:
-        raise ImportError("Install the optional yfinance package first") from exc
-    raw = yf.download("^GSPC", start=start, end=end, auto_adjust=False, progress=False)
-    if raw is None or raw.empty:
-        raise ValueError("No Yahoo Finance results; verify connection and ticker")
-    return clean_ohlcv(raw)
+# SHA-256 manifest of the newly written 2026 reimplementation (not original 2024 notebooks).
+c56a9d1f85da4273e644796f5aaa0d9fae94f998a8fb93990e1afa4565decfe3  .gitignore
+620fd5d64a20a896e0be2460aedf058d79b31629d5b7bfcecc9db5873623b57b  README.md
+7a53d67ec0a460a64291b6e17b13dabd5b03b65a9b9a8c8eb566969229596260  docs/CHANGELOG_AND_ATTRIBUTION.md
+8fe1d1521074b0f99f71efcbea141779f7f950bf4ba0f1b6bed8749b54175be4  docs/PUBLIC_REPOSITORY_CHECK.md
+17ecaf33146e4a4ad2f399bd2724f044e3117287eb6a8f542620a106cc8bcc31  paper/citation.bib
+ac1e2d1c433026570bd6c1cc10f9c15048706a4b832bc4a311ac1457521ba0c2  reproduction/README.md
+9c5d4219f1a0e4347d8a00f329bf8bdd4243678673f5464d6828dae88029859f  reproduction/data/README.md
+b6213ea5860a1d14f551acff0e556fe953d529612b57878c5452acec70aa4893  reproduction/notebooks/01_data_and_features.ipynb
+6a20146723281b4eb1385c1db0db60c9acda57992d7e21deccff6efeef040ac4  reproduction/notebooks/02_classical_models.ipynb
+0ad80007614d315c315c2c946e1dbf5f303efa27d872c8bece0aa4f1273a9d25  reproduction/notebooks/03_lstm_sequences.ipynb
+7e29777392a74afc54713b3c7f3fc7864479b08098608c76851fc4ca006bec41  reproduction/notebooks/04_feature_selection_and_arima.ipynb
+7ec6d2ce908413c9d7b416da03ec22d01db049da10fac0a46ee0c726bb8c6468  reproduction/notebooks/05_exploratory_macro_and_strategies.ipynb
+ab33bf1169dec7eada5115789e09cd33f7c6ca6506dc1a18cacdc0953f78454d  reproduction/pyproject.toml
+cf9656c563135ef83311453402c606fbc006c4acabdc0693920a3ba3adb3b971  reproduction/requirements.txt
+80f05c32b23cc358606afa27769c3e46be6816fa761e8c95747fc3426f3a36aa  reproduction/src/sp500_research/__init__.py
+2f4f5d9841fb1f0e44eb2e36bde855d0d8aa79cd172046c91fc7379395b34e29  reproduction/src/sp500_research/evaluation.py
+b6ac04f76505b4d4b9686dfae73253baf2b635d37e70765518370d7eaab16142  reproduction/src/sp500_research/features.py
+09b058f644bbedd599c038e0a13ff0d7a2687fc858df0aecdaa95e58e1d9899c  reproduction/src/sp500_research/macro.py
+997c0014b9c2ae8468b58c6555f20222cbdab833e221fe7bd733673b022500ac  reproduction/src/sp500_research/market.py
+cf1847a255abdb226e87234e1ebcf5bfa5b75c2488cc144d6c5798e6090df015  reproduction/src/sp500_research/strategies.py
+37bb8889b2c0d1418d0da392e1b8e6bc8ba539551aba7d49c9ba1f22d004ede2  reproduction/tests/test_market_features.py
