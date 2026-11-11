@@ -1,11 +1,72 @@
-6fd48f1ec585ac10062c7a44283e768f04d7f024e8a5a494950bc36d55eeb83c  archive/2024-coursework/coding/CPIAUCSL.csv
-6bf245de2de3da9e258441a29d2dd3cd239963cf2cf7fa4fcc76e1239265f382  archive/2024-coursework/coding/GDP.csv
-66b5b4ba0b272efe3ad4b4b29a9e5b1fff06cd74597f37b66de1df538c53b1e2  archive/2024-coursework/coding/RoughCode1.ipynb
-1cb82b0b57dd409c2acd7849fe19f527771d00fdb5a0ccf1f30c229cdb0bf105  archive/2024-coursework/coding/RoughCode2.ipynb
-2dafe0adb54a47fb849d2ee941cb8939caf649e7a44b08217a9df50f9ce6277e  archive/2024-coursework/coding/RoughCode3.ipynb
-c23c358bd48fb1e3f9ef76777cb1661aa9efddc403812c0228a222e05634261c  archive/2024-coursework/coding/RoughCode4.ipynb
-f3a954bba42ce1f0c09ca5857fe4aa8876799d9efe43948518e3ccb4e6ad453d  archive/2024-coursework/coding/UNRATE.csv
-a83bdffae45455218f4744ebb3736b78ec757d4507416ad90a03ecbad529d58a  archive/2024-coursework/coding/coding.ipynb
-ccd8ceab8a44a25ce0a87fc95c9806d0557d7a6ebe6e61d7ff84758205e748fd  archive/2024-coursework/coding/readme.txt
-8e0e0d9347ef09642ad1a197b5b504ea86cf9601a731a705533daa09fdff67bd  archive/2024-coursework/coding/roughCode5.ipynb
-121fdc683bf6936e7134a4a6b59bb605dde732d50617bbc64e4de77c349c10f5  archive/2024-coursework/coding/us_monthly_gdp.csv
+"""Market-data loading. User supplies a licensed, unmodified OHLCV CSV or downloads it.
+
+Index OHLCV data is for research, not necessarily a directly tradable product.
+"""
+from __future__ import annotations
+
+from pathlib import Path
+import pandas as pd
+
+
+REQUIRED = ("Open", "High", "Low", "Close")
+
+
+def clean_ohlcv(data: pd.DataFrame) -> pd.DataFrame:
+    """Normalize a daily market frame to UTC-naive, strictly increasing dates.
+
+    A missing Volume is represented as NaN, not zero: 0 would masquerade as
+    genuine volume and make OBV silently meaningless.
+    """
+    frame = data.copy()
+    # yfinance sometimes returns a 2-level header such as ('Close', '^GSPC').
+    if isinstance(frame.columns, pd.MultiIndex):
+        available = frame.columns.get_level_values(0)
+        if all(col in available for col in REQUIRED):
+            frame.columns = frame.columns.get_level_values(0)
+            frame = frame.loc[:, ~frame.columns.duplicated()]
+        else:
+            raise ValueError("Unsupported MultiIndex OHLCV column arrangement")
+    frame = frame.rename(columns=lambda c: str(c).strip())
+    missing = set(REQUIRED).difference(frame.columns)
+    if missing:
+        raise ValueError(f"Missing daily OHLCV columns: {sorted(missing)}")
+    if not isinstance(frame.index, pd.DatetimeIndex):
+        frame.index = pd.to_datetime(frame.index, errors="coerce", utc=True)
+    else:
+        frame.index = pd.to_datetime(frame.index, errors="coerce", utc=True)
+    frame.index = frame.index.tz_convert("UTC").tz_localize(None)
+    frame = frame.loc[frame.index.notna()].sort_index()
+    frame = frame.loc[~frame.index.duplicated(keep="last")]
+    if "Volume" not in frame.columns:
+        frame["Volume"] = float("nan")
+    frame = frame.loc[:, [*REQUIRED, "Volume"]]
+    for col in frame.columns:
+        frame[col] = pd.to_numeric(frame[col], errors="coerce")
+    frame = frame.dropna(subset=list(REQUIRED))
+    if frame.empty:
+        raise ValueError("No usable market rows")
+    if (frame["Close"] <= 0).any():
+        raise ValueError("Prices must be positive")
+    frame.index.name = "Date"
+    return frame
+
+
+def load_prices(csv_path: str | Path) -> pd.DataFrame:
+    """Read a user-supplied historical OHLCV CSV with a Date column."""
+    data = pd.read_csv(csv_path)
+    date_key = next((c for c in ("Date", "Datetime", "date") if c in data.columns), None)
+    if date_key is None:
+        raise ValueError("Expected a Date column in market CSV")
+    return clean_ohlcv(data.set_index(date_key))
+
+
+def download_sp500(start="2000-01-01", end="2025-01-01") -> pd.DataFrame:
+    """Explicit opt-in fresh download. No access or point-in-time guarantees."""
+    try:
+        import yfinance as yf
+    except ImportError as exc:
+        raise ImportError("Install the optional yfinance package first") from exc
+    raw = yf.download("^GSPC", start=start, end=end, auto_adjust=False, progress=False)
+    if raw is None or raw.empty:
+        raise ValueError("No Yahoo Finance results; verify connection and ticker")
+    return clean_ohlcv(raw)
