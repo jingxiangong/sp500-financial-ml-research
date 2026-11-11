@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+.ipynb_checkpoints/
+.env
+.env.*
+.DS_Store
+reproduction/data/*.csv
+reproduction/output/
+*.h5
+*.keras
+*.joblib
