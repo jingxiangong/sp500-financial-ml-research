@@ -1,0 +1,19 @@
+# Local caches and credentials
+.ipynb_checkpoints/
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
+desktop.ini
+# Large generated artifacts
+*.h5
+*.keras
+*.pkl
+*.joblib
+models/
+checkpoints/
